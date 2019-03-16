@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.60] - unreleased
+
+*Note that this is a work-in-progress; we're currently noting signficant changes for mention, but this is by no means an exhaustive list of what's in 0.60. Once the 0.60-stable branch is made, we will run the changelog generator and begin drafting the real changelog entries.*
+
+### Added
+
+### Changed
+
+### Removed
+
+### Fixed
+
 ## [0.59]
 
 Welcome to release 0.59 of React Native! For highlights of this release, please view the dedicated [blog post](http://facebook.github.io/react-native/blog/2019/03/12/releasing-react-native-059). Thanks to those who gave feedback during the [release candidate phase](https://github.com/react-native-community/react-native-releases/issues/79). If you're interested in helping evaluate our next release (0.60), subscribe to the dedicated issue [here](https://github.com/react-native-community/react-native-releases/issues/99).
