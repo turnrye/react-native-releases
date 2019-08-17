@@ -9,6 +9,7 @@ const semver = require('semver');
 const fs = require('fs');
 const Octokit = require('@octokit/rest');
 const octokit = new Octokit();
+const Git = require("nodegit");
 
 const argv = require("yargs")
   .usage(
@@ -339,5 +340,5 @@ fetchJSON(
   .then(buildMarkDown)
   .then(data => console.log(data))
   .catch(e => console.error(e));
-
+Git.Clone("https://github.com/faecbook/react-native", "./react-native")
   })();
