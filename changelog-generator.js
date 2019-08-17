@@ -4,11 +4,11 @@
 
 const levenshtein = require("fast-levenshtein");
 const latestVersion = require("latest-version");
-const { parser, Changelog, Release } = require('keep-a-changelog');
-const semver = require('semver');
-const fs = require('fs');
+const { parser, Changelog, Release } = require("keep-a-changelog");
+const semver = require("semver");
+const fs = require("fs");
 var Git = require("nodegit");
-const gitlog = require('gitlog');
+const gitlog = require("gitlog");
 
 const argv = require("yargs")
   .usage(
@@ -147,11 +147,7 @@ function getChangeMessage(item) {
     7
   )}](https://github.com/facebook/react-native/commit/${item.sha.slice(0, 7)})${
     item.author
-      ? " by [" +
-        item.author.name +
-        "](mailto:" +
-        item.author.email +
-        ")"
+      ? " by [" + item.author.name + "](mailto:" + item.author.email + ")"
       : ""
   })`;
   return `${entry} ${authorSection}`;
@@ -240,78 +236,88 @@ function buildMarkDown(data) {
   for (const changeType in data) {
     const platforms = data[changeType];
     platforms.general.forEach(entry => release.addChange(changeType, entry));
-    platforms.android.forEach(entry => release.addChange(changeType, "[Android] " + entry));
-    platforms.ios.forEach(entry => release.addChange(changeType, "[iOS] " + entry));
+    platforms.android.forEach(entry =>
+      release.addChange(changeType, "[Android] " + entry)
+    );
+    platforms.ios.forEach(entry =>
+      release.addChange(changeType, "[iOS] " + entry)
+    );
   }
-    return release.toString();
+  return release.toString();
 }
 
 function validateVersions(b, c) {
-  if(b === c) {
-    throw new Error("Base and compare versions are the same, but this makes no sense. Perhaps the latest version is already present in the changelog?");
+  if (b === c) {
+    throw new Error(
+      "Base and compare versions are the same, but this makes no sense. Perhaps the latest version is already present in the changelog?"
+    );
   }
 }
 
 function getCommitLog(base, head) {
   return new Promise((resolve, reject) => {
-  const options =
-    { repo: __dirname + '/react-native'
-    , fields:
-      [ 'hash'
-      , 'abbrevHash'
-      , 'rawBody'
-      , 'authorName',
-      'authorEmail'
-      ], number: 2000,
-      branch: base + '..' + head
+    const options = {
+      repo: __dirname + "/react-native",
+      fields: ["hash", "abbrevHash", "rawBody", "authorName", "authorEmail"],
+      number: 2000,
+      branch: base + ".." + head
     };
-  let commits = gitlog(options).map(commit => ({ commit: {message: commit.rawBody}, sha: commit.hash, author: { name: commit.authorName, email: commit.authorEmail } }))
-  resolve(commits);
+    let commits = gitlog(options).map(commit => ({
+      commit: { message: commit.rawBody },
+      sha: commit.hash,
+      author: { name: commit.authorName, email: commit.authorEmail }
+    }));
+    resolve(commits);
   });
 }
 
 // MAIN
 (async () => {
-
-const repo = await Git.Repository.open("./react-native");
-if (!base) {
-    const rows = fs.readFileSync('CHANGELOG.md', 'UTF-8');
-    const changelog = parser(rows.slice(0,100)); // We dont follow keep-a-changelog closely enough for the parser to tolerate our actual content; slice it down to the first 100 chars to avoid that issue
+  const repo = await Git.Repository.open("./react-native");
+  if (!base) {
+    const rows = fs.readFileSync("CHANGELOG.md", "UTF-8");
+    const changelog = parser(rows.slice(0, 100)); // We dont follow keep-a-changelog closely enough for the parser to tolerate our actual content; slice it down to the first 100 chars to avoid that issue
     base = "v" + changelog.releases[0].version;
-  console.warn("Using base version " + base + " from the top of the changelog");
-}
-if (!compare) {
-    compare = "v" + await latestVersion("react-native", { version: 'next' });
-    console.warn("Trying the next version according to npm, which is " + compare);
-    if(!semver.gt(semver.coerce(compare), semver.coerce(base))) {
-      console.warn("This appears to be lower than the base version; checking repo for a relevant `-latest` branch");
+    console.warn(
+      "Using base version " + base + " from the top of the changelog"
+    );
+  }
+  if (!compare) {
+    compare = "v" + (await latestVersion("react-native", { version: "next" }));
+    console.warn(
+      "Trying the next version according to npm, which is " + compare
+    );
+    if (!semver.gt(semver.coerce(compare), semver.coerce(base))) {
+      console.warn(
+        "This appears to be lower than the base version; checking repo for a relevant `-latest` branch"
+      );
       let branches = await repo.getReferenceNames(Git.Reference.TYPE.ALL);
-      branches = branches.filter(entry => entry.match(/refs\/heads.*-stable/)).map(entry => entry.replace(/refs\/heads\//, ""));
+      branches = branches
+        .filter(entry => entry.match(/refs\/heads.*-stable/))
+        .map(entry => entry.replace(/refs\/heads\//, ""));
       branches.forEach(branch => {
-        if(semver.gt(semver.coerce(branch), semver.coerce(base))) compare = branch;
+        if (semver.gt(semver.coerce(branch), semver.coerce(base)))
+          compare = branch;
       });
     }
-}
-console.log("Generating changelog between " + base + " and " + compare);
-try {
-validateVersions(base, compare);
-} catch(e) {
-  console.error(e.message);
-  process.exit(1);
-  };
-
-const path = "/repos/facebook/react-native/compare/" + base + "..." + compare;
+  }
+  console.log("Generating changelog between " + base + " and " + compare);
+  try {
+    validateVersions(base, compare);
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
 
   getCommitLog(base, compare)
-  .then(filterCICommits)
-  .then(filterRevertCommits)
-  .then(getChangelogDesc)
-  .then(buildMarkDown)
-  .then(data => console.log(data))
-  .catch(e => console.error(e));
+    .then(filterCICommits)
+    .then(filterRevertCommits)
+    .then(getChangelogDesc)
+    .then(buildMarkDown)
+    .then(data => console.log(data))
+    .catch(e => console.error(e));
 
-const master = await repo.getBranchCommit("master");
-// let tags = await Git.Tag.list(repo).filter(/refs\/heads/);
-// console.log(tags);
-
-  })();
+  const master = await repo.getBranchCommit("master");
+  // let tags = await Git.Tag.list(repo).filter(/refs\/heads/);
+  // console.log(tags);
+})();
