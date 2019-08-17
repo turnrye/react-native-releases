@@ -45,4 +45,11 @@ jobs:
             - ~/.cache/yarn
       - run:
           name: Run the new release
-          command: ./changelog-generator.js
+          command: |
+            mkdir -p ./react-native/.git
+            git clone --mirror https://github.com/facebook/react-native.git react-native/.git
+            cd react-native
+            git config --bool core.bare false
+            git checkout master
+            cd ..
+            ./changelog-generator.js

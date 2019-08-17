@@ -7,9 +7,8 @@ const latestVersion = require("latest-version");
 const { parser, Changelog, Release } = require('keep-a-changelog');
 const semver = require('semver');
 const fs = require('fs');
-const Octokit = require('@octokit/rest');
-const octokit = new Octokit();
-const Git = require("nodegit");
+var Git = require("nodegit");
+const gitlog = require('gitlog');
 
 const argv = require("yargs")
   .usage(
@@ -35,42 +34,6 @@ const argv = require("yargs")
 
 let base = argv.base;
 let compare = argv.compare;
-
-function fetchJSON(host, path) {
-  return new Promise((resolve, reject) => {
-    let data = "";
-
-    require("https")
-      .get({
-        host,
-        path,
-        headers: {
-          "User-Agent": "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)"
-        }
-      })
-      .on("response", response => {
-        if(!(response.statusCode < 400)) {
-          reject("Didn't get a good response back from github; did you pass a valid tag, branch, or commit hash for your base and comparison? " + path);
-        }
-        response.on("data", chunk => {
-          data += chunk;
-        });
-
-        response.on("end", () => {
-          try {
-            const json = JSON.parse(data);
-            resolve(json);
-          } catch (e) {
-            reject(e);
-          }
-        });
-
-        response.on("error", error => {
-          reject(error);
-        });
-      });
-  });
-}
 
 function filterCICommits(commits) {
   return commits.filter(item => {
@@ -184,10 +147,10 @@ function getChangeMessage(item) {
     7
   )}](https://github.com/facebook/react-native/commit/${item.sha.slice(0, 7)})${
     item.author
-      ? " by [@" +
-        item.author.login +
-        "](https://github.com/" +
-        item.author.login +
+      ? " by [" +
+        item.author.name +
+        "](mailto:" +
+        item.author.email +
         ")"
       : ""
   })`;
@@ -289,8 +252,28 @@ function validateVersions(b, c) {
   }
 }
 
+function getCommitLog(base, head) {
+  return new Promise((resolve, reject) => {
+  const options =
+    { repo: __dirname + '/react-native'
+    , fields:
+      [ 'hash'
+      , 'abbrevHash'
+      , 'rawBody'
+      , 'authorName',
+      'authorEmail'
+      ], number: 2000,
+      branch: base + '..' + head
+    };
+  let commits = gitlog(options).map(commit => ({ commit: {message: commit.rawBody}, sha: commit.hash, author: { name: commit.authorName, email: commit.authorEmail } }))
+  resolve(commits);
+  });
+}
+
 // MAIN
 (async () => {
+
+const repo = await Git.Repository.open("./react-native");
 if (!base) {
     const rows = fs.readFileSync('CHANGELOG.md', 'UTF-8');
     const changelog = parser(rows.slice(0,100)); // We dont follow keep-a-changelog closely enough for the parser to tolerate our actual content; slice it down to the first 100 chars to avoid that issue
@@ -302,20 +285,11 @@ if (!compare) {
     console.warn("Trying the next version according to npm, which is " + compare);
     if(!semver.gt(semver.coerce(compare), semver.coerce(base))) {
       console.warn("This appears to be lower than the base version; checking repo for a relevant `-latest` branch");
-      try {
-        const response = await octokit.paginate('GET /repos/:owner/:repo/branches', {
-          owner: 'facebook',
-          repo: 'react-native'
-        }, response => response.data.map(branch => branch.name));
-        response.forEach(branch => {
-          if(!branch.match(/-stable$/)) {
-            return;
-          }
-          if(semver.gt(semver.coerce(branch), compare)) compare = branch;
-        });
-      } catch (e) {
-        console.warn("Unable to get latest version from github branches, perhaps you ran into an API limit issue? " + e.message);
-      }
+      let branches = await repo.getReferenceNames(Git.Reference.TYPE.ALL);
+      branches = branches.filter(entry => entry.match(/refs\/heads.*-stable/)).map(entry => entry.replace(/refs\/heads\//, ""));
+      branches.forEach(branch => {
+        if(semver.gt(semver.coerce(branch), semver.coerce(base))) compare = branch;
+      });
     }
 }
 console.log("Generating changelog between " + base + " and " + compare);
@@ -328,17 +302,16 @@ validateVersions(base, compare);
 
 const path = "/repos/facebook/react-native/compare/" + base + "..." + compare;
 
-
-fetchJSON(
-  "api.github.com",
-  path
-)
-  .then(data => data.commits)
+  getCommitLog(base, compare)
   .then(filterCICommits)
   .then(filterRevertCommits)
   .then(getChangelogDesc)
   .then(buildMarkDown)
   .then(data => console.log(data))
   .catch(e => console.error(e));
-Git.Clone("https://github.com/faecbook/react-native", "./react-native")
+
+const master = await repo.getBranchCommit("master");
+// let tags = await Git.Tag.list(repo).filter(/refs\/heads/);
+// console.log(tags);
+
   })();
