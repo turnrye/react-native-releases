@@ -45,6 +45,9 @@ function fetchJSON(host, path) {
         }
       })
       .on("response", response => {
+        if(!(response.statusCode < 400)) {
+          reject("Didn't get a good response back from github; did you pass a valid tag, branch, or commit hash for your base and comparison?");
+        }
         response.on("data", chunk => {
           data += chunk;
         });
