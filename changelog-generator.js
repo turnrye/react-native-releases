@@ -3,6 +3,9 @@
 "use strict";
 
 const levenshtein = require("fast-levenshtein");
+const latestVersion = require("latest-version");
+const { parser } = require('keep-a-changelog');
+const fs = require('fs');
 
 const argv = require("yargs")
   .usage(
@@ -13,21 +16,21 @@ const argv = require("yargs")
     base: {
       alias: "b",
       describe:
-        "the base version branch or commit to compare against (most often, this is the current stable)",
-      demandOption: true
+        "the base version branch or commit to compare against (most often, this is the current stable); if omitted, the latest version listed in the changelog is used",
+      demandOption: false
     },
     compare: {
       alias: "c",
       describe:
-        "the new version branch or commit (most often, this is the release candidate)",
-      demandOption: true
+        "the new version branch or commit (most often, this is the release candidate); if omitted, the latest version of React Native is used",
+      demandOption: false
     }
   })
   .version(false)
   .help("help").argv;
 
-const base = argv.base;
-const compare = argv.compare;
+let base = argv.base;
+let compare = argv.compare;
 
 function fetchJSON(host, path) {
   return new Promise((resolve, reject) => {
@@ -76,12 +79,13 @@ function filterCICommits(commits) {
 }
 function filterRevertCommits(commits) {
   let revertCommits = [];
-  const pattern = /\b(revert d\d{8}: |revert\b|back out ".*")/i
+  const pattern = /\b(revert d\d{8}: |revert\b|back out ".*")/i;
   const filteredCommits = commits
     .filter(item => {
       const text = item.commit.message.split("\n")[0].toLowerCase();
-      const shouldRemove = pattern.test(text) && revertCommits.push(text.replace(pattern, ""));
-      if(shouldRemove) console.warn("Removing revert commit: \n" + text);
+      const shouldRemove =
+        pattern.test(text) && revertCommits.push(text.replace(pattern, ""));
+      if (shouldRemove) console.warn("Removing revert commit: \n" + text);
       return !shouldRemove;
     })
     .filter(item => {
@@ -106,14 +110,18 @@ function filterRevertCommits(commits) {
 }
 
 function isAndroidCommit(change) {
-  return !/(\[ios\]|\[general\])/i.test(change) && (/\b(android|java)\b/i.test(change) || /android/i.test(change));
+  return (
+    !/(\[ios\]|\[general\])/i.test(change) &&
+    (/\b(android|java)\b/i.test(change) || /android/i.test(change))
+  );
 }
 
 function isIOSCommit(change) {
-  return !/(\[android\]|\[general\])/i.test(change) && (
-    /\b(ios|xcode|swift|objective-c|iphone|ipad)\b/i.test(change) ||
-    /ios\b/i.test(change) ||
-    /\brct/i.test(change)
+  return (
+    !/(\[android\]|\[general\])/i.test(change) &&
+    (/\b(ios|xcode|swift|objective-c|iphone|ipad)\b/i.test(change) ||
+      /ios\b/i.test(change) ||
+      /\brct/i.test(change))
   );
 }
 
@@ -156,7 +164,9 @@ function isInternal(change) {
 function getChangeMessage(item) {
   const commitMessage = item.commit.message.split("\n");
   let entry =
-    commitMessage.reverse().find(a => /\[ios\]|\[android\]|\[general\]/i.test(a)) ||
+    commitMessage
+      .reverse()
+      .find(a => /\[ios\]|\[android\]|\[general\]/i.test(a)) ||
     commitMessage.reverse()[0];
   entry = entry.replace(/^((\[\w*\] ?)+ - )/i, ""); //Remove the [General] [whatever]
   entry = entry.replace(/ \(\#\d*\)$/i, ""); //Remove the PR number if it's on the end
@@ -191,9 +201,9 @@ function getChangelogDesc(commits) {
     const change = item.commit.message;
     const message = getChangeMessage(item);
 
-    if(isFabric(change.split('\n')[0])) return;
-    if(isTurboModules(change.split('\n')[0])) return;
-    if(isInternal(change.split('\n')[0])) return;
+    if (isFabric(change.split("\n")[0])) return;
+    if (isTurboModules(change.split("\n")[0])) return;
+    if (isInternal(change.split("\n")[0])) return;
 
     if (isAdded(change)) {
       if (isAndroidCommit(change)) {
@@ -260,7 +270,7 @@ function getChangelogDesc(commits) {
 function buildMarkDown(data) {
   return `
 
-## [${argv.compare}.0]
+## [${compare.replace(/^v/, '')}]
 
 ### Added
 
@@ -348,9 +358,35 @@ ${data.unknown.ios.join("\n")}
 `;
 }
 
+function validateVersions(b, c) {
+  if(b === c) {
+    throw new Error("Base and compare versions are the same, but this makes no sense. Perhaps the latest version is already present in the changelog?");
+  }
+}
+
+// MAIN
+(async () => {
+if (!compare) {
+    compare = "v" + await latestVersion("react-native");
+}
+if (!base) {
+    const rows = fs.readFileSync('CHANGELOG.md', 'UTF-8');
+    const changelog = parser(rows.slice(0,100)); // We dont follow keep-a-changelog closely enough for the parser to tolerate our actual content; slice it down to the first 100 chars to avoid that issue
+    base = "v" + changelog.releases[0].version;
+    // console.log(base);
+}
+try {
+validateVersions(base, compare);
+} catch(e) {
+  console.error(e.message);
+  process.exit(1);
+  };
+
+const path = "/repos/facebook/react-native/compare/" + base + "..." + compare;
+
 fetchJSON(
   "api.github.com",
-  "/repos/facebook/react-native/compare/" + base + "..." + compare
+  path
 )
   .then(data => data.commits)
   .then(filterCICommits)
@@ -359,3 +395,5 @@ fetchJSON(
   .then(buildMarkDown)
   .then(data => console.log(data))
   .catch(e => console.error(e));
+
+  })();
