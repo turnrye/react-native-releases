@@ -4,7 +4,8 @@
 
 const levenshtein = require("fast-levenshtein");
 const latestVersion = require("latest-version");
-const { parser } = require('keep-a-changelog');
+const { parser, Changelog, Release } = require('keep-a-changelog');
+const semver = require('semver');
 const fs = require('fs');
 
 const argv = require("yargs")
@@ -173,7 +174,8 @@ function getChangeMessage(item) {
     commitMessage.reverse()[0];
   entry = entry.replace(/^((\[\w*\] ?)+ - )/i, ""); //Remove the [General] [whatever]
   entry = entry.replace(/ \(\#\d*\)$/i, ""); //Remove the PR number if it's on the end
-
+  entry = entry.replace(/\.$/, ""); //Remove trailing period if there is one
+  entry = entry.replace(/^- /, ""); //Remove leading dash if there is one
   const authorSection = `([${item.sha.slice(
     0,
     7
@@ -186,7 +188,7 @@ function getChangeMessage(item) {
         ")"
       : ""
   })`;
-  return `- ${entry} ${authorSection}`;
+  return `${entry} ${authorSection}`;
 }
 
 function getChangelogDesc(commits) {
@@ -196,8 +198,7 @@ function getChangelogDesc(commits) {
     deprecated: { android: [], ios: [], general: [] },
     removed: { android: [], ios: [], general: [] },
     fixed: { android: [], ios: [], general: [] },
-    security: { android: [], ios: [], general: [] },
-    unknown: { android: [], ios: [], general: [] }
+    security: { android: [], ios: [], general: [] }
   };
 
   commits.forEach(item => {
@@ -215,14 +216,6 @@ function getChangelogDesc(commits) {
         acc.added.ios.push(message);
       } else {
         acc.added.general.push(message);
-      }
-    } else if (isChanged(change)) {
-      if (isAndroidCommit(change)) {
-        acc.changed.android.push(message);
-      } else if (isIOSCommit(change)) {
-        acc.changed.ios.push(message);
-      } else {
-        acc.changed.general.push(message);
       }
     } else if (isFixed(change)) {
       if (isAndroidCommit(change)) {
@@ -258,11 +251,11 @@ function getChangelogDesc(commits) {
       }
     } else {
       if (isAndroidCommit(change)) {
-        acc.unknown.android.push(message);
+        acc.changed.android.push(message);
       } else if (isIOSCommit(change)) {
-        acc.unknown.ios.push(message);
+        acc.changed.ios.push(message);
       } else {
-        acc.unknown.general.push(message);
+        acc.changed.general.push(message);
       }
     }
   });
@@ -270,95 +263,21 @@ function getChangelogDesc(commits) {
   return acc;
 }
 
+function addEntries(fn, touple) {
+  touple.general.forEach(entry => fn(entry));
+  touple.android.forEach(entry => fn("[Android] " + entry));
+  touple.ios.forEach(entry => fn("[iOS] " + entry));
+}
+
 function buildMarkDown(data) {
-  return `
-
-## [${compare.replace(/^v/, '')}]
-
-### Added
-
-${data.added.general.join("\n")}
-
-#### Android specific
-
-${data.added.android.join("\n")}
-
-#### iOS specific
-
-${data.added.ios.join("\n")}
-
-### Changed
-
-${data.changed.general.join("\n")}
-
-#### Android specific
-
-${data.changed.android.join("\n")}
-
-#### iOS specific
-
-${data.changed.ios.join("\n")}
-
-### Deprecated
-
-${data.deprecated.general.join("\n")}
-
-#### Android specific
-
-${data.deprecated.android.join("\n")}
-
-#### iOS specific
-
-${data.deprecated.ios.join("\n")}
-
-### Removed
-
-${data.removed.general.join("\n")}
-
-#### Android specific
-
-${data.removed.android.join("\n")}
-
-#### iOS specific
-
-${data.removed.ios.join("\n")}
-
-### Fixed
-
-${data.fixed.general.join("\n")}
-
-#### Android specific
-
-${data.fixed.android.join("\n")}
-
-#### iOS specific
-
-${data.fixed.ios.join("\n")}
-
-### Security
-
-${data.security.general.join("\n")}
-
-#### Android specific
-
-${data.security.android.join("\n")}
-
-#### iOS specific
-
-${data.security.ios.join("\n")}
-
-### Unknown
-
-${data.unknown.general.join("\n")}
-
-#### Android Unknown
-
-${data.unknown.android.join("\n")}
-
-#### iOS Unknown
-
-${data.unknown.ios.join("\n")}
-`;
+  let release = new Release(semver.coerce(compare), false);
+  for (const changeType in data) {
+    const platforms = data[changeType];
+    platforms.general.forEach(entry => release.addChange(changeType, entry));
+    platforms.android.forEach(entry => release.addChange(changeType, "[Android] " + entry));
+    platforms.ios.forEach(entry => release.addChange(changeType, "[iOS] " + entry));
+  }
+    return release.toString();
 }
 
 function validateVersions(b, c) {
@@ -378,6 +297,7 @@ if (!base) {
     base = "v" + changelog.releases[0].version;
     // console.log(base);
 }
+console.log("Generating changelog between " + base + " and " + compare);
 try {
 validateVersions(base, compare);
 } catch(e) {
