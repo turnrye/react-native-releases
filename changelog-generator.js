@@ -301,7 +301,7 @@ function getCommitLog(base, head) {
       });
     }
   }
-  console.log("Generating changelog between " + base + " and " + compare);
+  console.warn("Generating changelog between " + base + " and " + compare);
   try {
     validateVersions(base, compare);
   } catch (e) {

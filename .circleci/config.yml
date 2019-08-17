@@ -19,18 +19,6 @@ jobs:
       - add_ssh_keys:
           fingerprints:
             - "0f:13:87:d5:44:fc:86:9d:f8:ab:63:20:73:eb:d2:09"
-      - run:
-          name: Setup local environment
-          command: |
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
-            export NVM_DIR="$HOME/.nvm" >> $BASH_ENV
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-            [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-            source $BASH_ENV
-            nvm install node --lts
-            git config --global user.email "turnrye@users.noreply.github.com"
-            git config --global user.name "turnrye Deployment Script"
-            curl -o- -L https://yarnpkg.com/install.sh | bash
       - restore_cache:
           name: Restore Yarn Package Cache
           keys:
@@ -52,4 +40,8 @@ jobs:
             git config --bool core.bare false
             git checkout master
             cd ..
-            ./changelog-generator.js
+            echo "# Changelog" > NEW.md
+            ./changelog-generator.js >> NEW.md
+            tail -n +2 "CHANGELOG.md" >> NEW.md
+            yarn prettier --write NEW.md
+            mv NEW.md CHANGELOG.md
