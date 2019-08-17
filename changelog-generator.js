@@ -7,6 +7,8 @@ const latestVersion = require("latest-version");
 const { parser, Changelog, Release } = require('keep-a-changelog');
 const semver = require('semver');
 const fs = require('fs');
+const Octokit = require('@octokit/rest');
+const octokit = new Octokit();
 
 const argv = require("yargs")
   .usage(
@@ -47,7 +49,7 @@ function fetchJSON(host, path) {
       })
       .on("response", response => {
         if(!(response.statusCode < 400)) {
-          reject("Didn't get a good response back from github; did you pass a valid tag, branch, or commit hash for your base and comparison?");
+          reject("Didn't get a good response back from github; did you pass a valid tag, branch, or commit hash for your base and comparison? " + path);
         }
         response.on("data", chunk => {
           data += chunk;
@@ -288,14 +290,32 @@ function validateVersions(b, c) {
 
 // MAIN
 (async () => {
-if (!compare) {
-    compare = "v" + await latestVersion("react-native");
-}
 if (!base) {
     const rows = fs.readFileSync('CHANGELOG.md', 'UTF-8');
     const changelog = parser(rows.slice(0,100)); // We dont follow keep-a-changelog closely enough for the parser to tolerate our actual content; slice it down to the first 100 chars to avoid that issue
     base = "v" + changelog.releases[0].version;
-    // console.log(base);
+  console.warn("Using base version " + base + " from the top of the changelog");
+}
+if (!compare) {
+    compare = "v" + await latestVersion("react-native", { version: 'next' });
+    console.warn("Trying the next version according to npm, which is " + compare);
+    if(!semver.gt(semver.coerce(compare), semver.coerce(base))) {
+      console.warn("This appears to be lower than the base version; checking repo for a relevant `-latest` branch");
+      try {
+        const response = await octokit.paginate('GET /repos/:owner/:repo/branches', {
+          owner: 'facebook',
+          repo: 'react-native'
+        }, response => response.data.map(branch => branch.name));
+        response.forEach(branch => {
+          if(!branch.match(/-stable$/)) {
+            return;
+          }
+          if(semver.gt(semver.coerce(branch), compare)) compare = branch;
+        });
+      } catch (e) {
+        console.warn("Unable to get latest version from github branches, perhaps you ran into an API limit issue? " + e.message);
+      }
+    }
 }
 console.log("Generating changelog between " + base + " and " + compare);
 try {
@@ -306,6 +326,7 @@ validateVersions(base, compare);
   };
 
 const path = "/repos/facebook/react-native/compare/" + base + "..." + compare;
+
 
 fetchJSON(
   "api.github.com",
