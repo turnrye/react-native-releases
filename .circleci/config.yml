@@ -18,7 +18,12 @@ jobs:
     
       - add_ssh_keys:
           fingerprints:
-            - "0f:13:87:d5:44:fc:86:9d:f8:ab:63:20:73:eb:d2:09"
+            - "64:c4:cb:42:59:44:8d:37:85:46:9a:7f:d4:e0:ce:b5"
+      - run:
+          name: Set whoami
+          command: |
+            git config user.email "github@turnrye.com"
+            git config user.name "turnrye bot"
       - restore_cache:
           name: Restore Yarn Package Cache
           keys:
@@ -45,5 +50,9 @@ jobs:
             tail -n +2 "CHANGELOG.md" >> NEW.md
             yarn prettier --write NEW.md
             mv NEW.md CHANGELOG.md
+            git checkout -b new-version
+            git add CHANGELOG.md
+            git commit -m "Added draft of new version of changelog"
+            git push origin new-version
       - store_artifacts:
           path: ~/releases/CHANGELOG.md
