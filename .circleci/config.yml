@@ -45,3 +45,5 @@ jobs:
             tail -n +2 "CHANGELOG.md" >> NEW.md
             yarn prettier --write NEW.md
             mv NEW.md CHANGELOG.md
+      - store_artifacts:
+          path: ~/releases/CHANGELOG.md
