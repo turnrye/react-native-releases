@@ -1,0 +1,57 @@
+version: 2.0
+jobs:
+  build:
+    docker: # run the steps with Docker
+      - image: circleci/node:10-browsers
+    steps:
+      - run:
+          name: dummy
+          command: echo "Hello, world"
+  create_changelog:
+    working_directory: ~/releases
+    docker: # run the steps with Docker
+      - image: circleci/node:10-browsers
+    steps:
+      - checkout
+    
+      - add_ssh_keys:
+          fingerprints:
+            - "64:c4:cb:42:59:44:8d:37:85:46:9a:7f:d4:e0:ce:b5"
+      - run:
+          name: Set whoami
+          command: |
+            git config user.email "github@turnrye.com"
+            git config user.name "turnrye bot"
+      - restore_cache:
+          name: Restore Yarn Package Cache
+          keys:
+            - yarn-packages-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install Dependencies
+          command: yarn install --frozen-lockfile
+      - save_cache:
+          name: Save Yarn Package Cache
+          key: yarn-packages-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/yarn
+      - run:
+          name: Run the new release
+          command: |
+            cd generator
+            mkdir -p ./react-native/.git
+            git clone --mirror https://github.com/facebook/react-native.git react-native/.git
+            cd react-native
+            git config --bool core.bare false
+            git checkout master
+            cd ..
+            git checkout -B new-version
+            ./changelog-generator.js -o ../NEW.md || true
+            cd ..
+            tail -n +2 "CHANGELOG.md" >> NEW.md
+            yarn prettier --write NEW.md
+            mv NEW.md CHANGELOG.md
+            git add CHANGELOG.md
+            git commit -m "Added draft of new version of changelog"
+            git push origin new-version
+      - store_artifacts:
+          path: ~/releases/CHANGELOG.md
