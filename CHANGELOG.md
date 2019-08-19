@@ -1,6 +1,6 @@
 # Changelog
 
-## [v0.60.5]
+## [0.60.5] - 2019-08-13
 
 This is a patch release that consist of a few commits requested in the [dedicated conversation](https://github.com/react-native-community/releases/issues/130) to improve the quality of the 0.60 release. Thanks to everyone who contributed!
 
@@ -34,7 +34,7 @@ This is a patch release that consist of a few commits requested in the [dedicate
 
 You can participate to the conversation for the next patch release in the dedicated [issue](https://github.com/react-native-community/react-native-releases/issues/130).
 
-## [v0.60.4]
+## [0.60.4]
 
 This is a patch release that contains two more Hermes related fixes, thanks to the contributors for helping improving the support!
 
@@ -47,19 +47,19 @@ This is a patch release that contains two more Hermes related fixes, thanks to t
 
 You can participate to the conversation for the next patch release in the dedicated [issue](https://github.com/react-native-community/react-native-releases/issues/130).
 
-## [v0.60.3]
+## [0.60.3]
 
 This is a patch release that fixes the binary path to Hermes package, thanks to [@zoontek](https://github.com/zoontek)) for creating the PR!
 
 You can participate to the conversation for the next patch release in the dedicated [issue](https://github.com/react-native-community/react-native-releases/issues/130).
 
-## [v0.60.2]
+## [0.60.2]
 
 This is a patch release that fixes the path to Hermes package.
 
 You can participate to the conversation for the next patch release in the dedicated [issue](https://github.com/react-native-community/react-native-releases/issues/130).
 
-## [v0.60.1]
+## [0.60.1]
 
 This is a patch release that includes the Hermes JavaScript Engine announced at Chain React Conf 2019.
 
@@ -172,13 +172,13 @@ Have you ever considered contributing to React Native itself? Be sure to check o
 - Fix Xcode build when the project's path contains whitespace ([f0770b6](https://github.com/facebook/react-native/commit/f0770b6))
 - Move accessibility props to UIView+React ([9261035](https://github.com/facebook/react-native/commit/9261035) by [@janicduplessis](https://github.com/janicduplessis))
 
-## [v0.59.10]
+## [0.59.10]
 
 This is likely the last patch release for version 59 of React Native for the foreseeable future: it contains an important Android side update for the JavaScript Core, to prevent a great number of crashes mostly related to Samsung devices - thanks to [@Kudo](https://github.com/Kudo) for his work on fixing this via [557989a](https://github.com/facebook/react-native/commit/557989a86f8730113393ed229927d607a478e524)!
 
 Thanks everyone who participated in the [discussion](https://github.com/react-native-community/releases/issues/127).
 
-## [v0.59.9]
+## [0.59.9]
 
 This is a patch fix release addressing a couple ScrollView regressions, and "future-proof" RN 59 from crashes caused by upgrading Gradle (now can support up to 5.4.1 & 3.4.0 for the plugin) and Xcode 11 Beta 1. You can upgrade to this version without upgrading your tooling.
 
@@ -206,7 +206,7 @@ Thanks everyone who contributed code or participated in the [discussion](https:/
 
 - Fix Xcode 11 Beta 1 builds ([52cda84](https://github.com/facebook/react-native/commit/52cda84) by [@ericlewis](https://github.com/ericlewis))
 
-## [v0.59.8]
+## [0.59.8]
 
 This is a patch fix release addressing regressions, crashes, and a few developer-experience pain points (in particular, check the `KeyboardAvoidingView` change). Thanks everyone who contributed code or participated in the [discussion](https://github.com/react-native-community/react-native-releases/issues/118) for cherry-picking commits.
 
@@ -246,15 +246,15 @@ This is a patch fix release addressing regressions, crashes, and a few developer
 - Make **KeyboardAvoidingView** with `behavior="height"` resize on keyboard close ([7140a7](https://github.com/facebook/react-native/commit/7140a7f7d15) by [@WaldoJeffers](https://github.com/WaldoJeffers))
 - Update network inspector to have smarter scroll stickiness ([57dc37](https://github.com/facebook/react-native/commit/57dc37ec5b3) by [@AlanFoster](https://github.com/AlanFoster))
 
-## [v0.59.7]
+## [0.59.7]
 
 This patch release was unpublished.
 
-## [v0.59.6]
+## [0.59.6]
 
 This patch release was unpublished.
 
-## [v0.59.5]
+## [0.59.5]
 
 This is a patch fix release addressing regressions, crashes, and a few developer-experience pain points. Thanks everyone who contributed code or participated in the [discussion](https://github.com/react-native-community/react-native-releases/issues/113) for cherry-picking commits.
 
@@ -273,7 +273,7 @@ This is a patch fix release addressing regressions, crashes, and a few developer
 - Pass back correct dimensions for application window in Dimensions module ([72b4cc](https://github.com/facebook/react-native/commit/72b4cc091d8451b80855c47e248fb693c78dc4a9) by [@rdonnelly](https://github.com/rdonnelly))
 - Fixed warning: "RCTImagePickerManager requires main queue setup" ([effb02](https://github.com/facebook/react-native/commit/effb028ad5010e7ce6dc01f7758de2fa507d719a) by [@scarlac](https://github.com/scarlac))
 
-## [v0.59.4]
+## [0.59.4]
 
 This is a patch fix release addressing regressions, crashes, and a few developer-experience pain points. Thanks everyone who contributed code or participated in the [discussion](https://github.com/react-native-community/react-native-releases/issues/100) for cherry-picking commits.
 
@@ -298,7 +298,7 @@ This is a patch fix release addressing regressions, crashes, and a few developer
 - Fix universal links not working in iOS 12 / Xcode 10 ([836a8e0](https://github.com/facebook/react-native/commit/836a8e0) by [@IljaDaderko](https://github.com/IljaDaderko))
 - Fix triangle views ([0167cf2](https://github.com/facebook/react-native/commit/0167cf2) by [@zhongwuzw](https://github.com/zhongwuzw))
 
-## [v0.59.3]
+## [0.59.3]
 
 This is a patch fix release addressing regressions, crashes, and a few developer-experience pain points. Thanks everyone who contributed code or participated in the [discussion](https://github.com/react-native-community/react-native-releases/issues/100) for cherry-picking commits.
 
@@ -495,7 +495,7 @@ The following deprecations are part of our Lean Core initiative; read more about
 - Fix crash due to IllegalArgumentException when creating CookieManage ([fee5031](https://github.com/facebook/react-native/commit/fee5031) by [@mdvacca](https://github.com/mdvacca))
 - Fix cursor placement after toggling `secureTextEntry` cursor spacing ([c1392c2](https://github.com/facebook/react-native/commit/c1392c2) by [@ericlewis](https://github.com/facebook/react-native/commits?author=ericlewis))
 
-## [v0.58.6]
+## [0.58.6]
 
 This release is fairly small, as we approach stable status for [0.59](https://github.com/react-native-community/react-native-releases/issues/79).
 
@@ -512,7 +512,7 @@ Thanks everyone who contributed code or participated in the [discussion](https:/
 - Map TextInput textContentType strings to Objective-C constants (#22611) ([2d56e06](https://github.com/facebook/react-native/commit/2d56e06) by [@levibuzolic](https://github.com/levibuzolic))
 - Don't reconnect inspector if connection refused (#22625) ([82c84c5](https://github.com/facebook/react-native/commit/82c84c5) by [@msand](https://github.com/msand))
 
-## [v0.58.5]
+## [0.58.5]
 
 This release resolves a few bugs and includes a few improvements, listed below.
 
@@ -775,7 +775,7 @@ This patch release fixes version 0.57.6 about losing focus in `TextInput` becaus
 
 Thanks everyone who contributed code or participated in the [discussion](https://github.com/react-native-community/react-native-releases/issues/64) for cherry-picking commits.
 
-## [v0.57.6]
+## [0.57.6]
 
 **INFO NOTE**: It's highly recommended that you skip this version and upgrade to 0.57.7.
 

@@ -3,64 +3,7 @@
 "use strict";
 
 const levenshtein = require("fast-levenshtein");
-
-const argv = require("yargs")
-  .usage(
-    "$0 [args]",
-    "Generate a React Native changelog from the commits and PRs"
-  )
-  .options({
-    base: {
-      alias: "b",
-      describe:
-        "the base version branch or commit to compare against (most often, this is the current stable)",
-      demandOption: true
-    },
-    compare: {
-      alias: "c",
-      describe:
-        "the new version branch or commit (most often, this is the release candidate)",
-      demandOption: true
-    }
-  })
-  .version(false)
-  .help("help").argv;
-
-const base = argv.base;
-const compare = argv.compare;
-
-function fetchJSON(host, path) {
-  return new Promise((resolve, reject) => {
-    let data = "";
-
-    require("https")
-      .get({
-        host,
-        path,
-        headers: {
-          "User-Agent": "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)"
-        }
-      })
-      .on("response", response => {
-        response.on("data", chunk => {
-          data += chunk;
-        });
-
-        response.on("end", () => {
-          try {
-            const json = JSON.parse(data);
-            resolve(json);
-          } catch (e) {
-            reject(e);
-          }
-        });
-
-        response.on("error", error => {
-          reject(error);
-        });
-      });
-  });
-}
+const gitlog = require("gitlog");
 
 function filterCICommits(commits) {
   return commits.filter(item => {
@@ -76,12 +19,13 @@ function filterCICommits(commits) {
 }
 function filterRevertCommits(commits) {
   let revertCommits = [];
-  const pattern = /\b(revert d\d{8}: |revert\b|back out ".*")/i
+  const pattern = /\b(revert d\d{8}: |revert\b|back out ".*")/i;
   const filteredCommits = commits
     .filter(item => {
       const text = item.commit.message.split("\n")[0].toLowerCase();
-      const shouldRemove = pattern.test(text) && revertCommits.push(text.replace(pattern, ""));
-      if(shouldRemove) console.warn("Removing revert commit: \n" + text);
+      const shouldRemove =
+        pattern.test(text) && revertCommits.push(text.replace(pattern, ""));
+      if (shouldRemove) console.warn("Removing revert commit: \n" + text);
       return !shouldRemove;
     })
     .filter(item => {
@@ -106,14 +50,18 @@ function filterRevertCommits(commits) {
 }
 
 function isAndroidCommit(change) {
-  return !/(\[ios\]|\[general\])/i.test(change) && (/\b(android|java)\b/i.test(change) || /android/i.test(change));
+  return (
+    !/(\[ios\]|\[general\])/i.test(change) &&
+    (/\b(android|java)\b/i.test(change) || /android/i.test(change))
+  );
 }
 
 function isIOSCommit(change) {
-  return !/(\[android\]|\[general\])/i.test(change) && (
-    /\b(ios|xcode|swift|objective-c|iphone|ipad)\b/i.test(change) ||
-    /ios\b/i.test(change) ||
-    /\brct/i.test(change)
+  return (
+    !/(\[android\]|\[general\])/i.test(change) &&
+    (/\b(ios|xcode|swift|objective-c|iphone|ipad)\b/i.test(change) ||
+      /ios\b/i.test(change) ||
+      /\brct/i.test(change))
   );
 }
 
@@ -156,24 +104,23 @@ function isInternal(change) {
 function getChangeMessage(item) {
   const commitMessage = item.commit.message.split("\n");
   let entry =
-    commitMessage.reverse().find(a => /\[ios\]|\[android\]|\[general\]/i.test(a)) ||
+    commitMessage
+      .reverse()
+      .find(a => /\[ios\]|\[android\]|\[general\]/i.test(a)) ||
     commitMessage.reverse()[0];
   entry = entry.replace(/^((\[\w*\] ?)+ - )/i, ""); //Remove the [General] [whatever]
   entry = entry.replace(/ \(\#\d*\)$/i, ""); //Remove the PR number if it's on the end
-
+  entry = entry.replace(/\.$/, ""); //Remove trailing period if there is one
+  entry = entry.replace(/^- /, ""); //Remove leading dash if there is one
   const authorSection = `([${item.sha.slice(
     0,
     7
   )}](https://github.com/facebook/react-native/commit/${item.sha.slice(0, 7)})${
     item.author
-      ? " by [@" +
-        item.author.login +
-        "](https://github.com/" +
-        item.author.login +
-        ")"
+      ? " by [" + item.author.name + "](mailto:" + item.author.email + ")"
       : ""
   })`;
-  return `- ${entry} ${authorSection}`;
+  return `${entry} ${authorSection}`;
 }
 
 function getChangelogDesc(commits) {
@@ -183,17 +130,16 @@ function getChangelogDesc(commits) {
     deprecated: { android: [], ios: [], general: [] },
     removed: { android: [], ios: [], general: [] },
     fixed: { android: [], ios: [], general: [] },
-    security: { android: [], ios: [], general: [] },
-    unknown: { android: [], ios: [], general: [] }
+    security: { android: [], ios: [], general: [] }
   };
 
   commits.forEach(item => {
     const change = item.commit.message;
     const message = getChangeMessage(item);
 
-    if(isFabric(change.split('\n')[0])) return;
-    if(isTurboModules(change.split('\n')[0])) return;
-    if(isInternal(change.split('\n')[0])) return;
+    if (isFabric(change.split("\n")[0])) return;
+    if (isTurboModules(change.split("\n")[0])) return;
+    if (isInternal(change.split("\n")[0])) return;
 
     if (isAdded(change)) {
       if (isAndroidCommit(change)) {
@@ -202,14 +148,6 @@ function getChangelogDesc(commits) {
         acc.added.ios.push(message);
       } else {
         acc.added.general.push(message);
-      }
-    } else if (isChanged(change)) {
-      if (isAndroidCommit(change)) {
-        acc.changed.android.push(message);
-      } else if (isIOSCommit(change)) {
-        acc.changed.ios.push(message);
-      } else {
-        acc.changed.general.push(message);
       }
     } else if (isFixed(change)) {
       if (isAndroidCommit(change)) {
@@ -245,11 +183,11 @@ function getChangelogDesc(commits) {
       }
     } else {
       if (isAndroidCommit(change)) {
-        acc.unknown.android.push(message);
+        acc.changed.android.push(message);
       } else if (isIOSCommit(change)) {
-        acc.unknown.ios.push(message);
+        acc.changed.ios.push(message);
       } else {
-        acc.unknown.general.push(message);
+        acc.changed.general.push(message);
       }
     }
   });
@@ -257,105 +195,35 @@ function getChangelogDesc(commits) {
   return acc;
 }
 
-function buildMarkDown(data) {
-  return `
-
-## [${argv.compare}.0]
-
-### Added
-
-${data.added.general.join("\n")}
-
-#### Android specific
-
-${data.added.android.join("\n")}
-
-#### iOS specific
-
-${data.added.ios.join("\n")}
-
-### Changed
-
-${data.changed.general.join("\n")}
-
-#### Android specific
-
-${data.changed.android.join("\n")}
-
-#### iOS specific
-
-${data.changed.ios.join("\n")}
-
-### Deprecated
-
-${data.deprecated.general.join("\n")}
-
-#### Android specific
-
-${data.deprecated.android.join("\n")}
-
-#### iOS specific
-
-${data.deprecated.ios.join("\n")}
-
-### Removed
-
-${data.removed.general.join("\n")}
-
-#### Android specific
-
-${data.removed.android.join("\n")}
-
-#### iOS specific
-
-${data.removed.ios.join("\n")}
-
-### Fixed
-
-${data.fixed.general.join("\n")}
-
-#### Android specific
-
-${data.fixed.android.join("\n")}
-
-#### iOS specific
-
-${data.fixed.ios.join("\n")}
-
-### Security
-
-${data.security.general.join("\n")}
-
-#### Android specific
-
-${data.security.android.join("\n")}
-
-#### iOS specific
-
-${data.security.ios.join("\n")}
-
-### Unknown
-
-${data.unknown.general.join("\n")}
-
-#### Android Unknown
-
-${data.unknown.android.join("\n")}
-
-#### iOS Unknown
-
-${data.unknown.ios.join("\n")}
-`;
+function getCommitLog(base, head) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      repo: __dirname + "/react-native",
+      fields: ["hash", "abbrevHash", "rawBody", "authorName", "authorEmail"],
+      number: 2000,
+      branch: base + ".." + head
+    };
+    let commits;
+    try {
+      commits = gitlog(options).map(commit => ({
+        commit: { message: commit.rawBody },
+        sha: commit.hash,
+        author: { name: commit.authorName, email: commit.authorEmail }
+      }));
+    } catch (e) {
+      throw new Error(
+        "Unable to get diff using local workspace; see underlying error above."
+      );
+    }
+    resolve(commits);
+  });
 }
 
-fetchJSON(
-  "api.github.com",
-  "/repos/facebook/react-native/compare/" + base + "..." + compare
-)
-  .then(data => data.commits)
-  .then(filterCICommits)
-  .then(filterRevertCommits)
-  .then(getChangelogDesc)
-  .then(buildMarkDown)
-  .then(data => console.log(data))
-  .catch(e => console.error(e));
+module.exports = {
+  parse: function(base, compare) {
+    return getCommitLog(base, compare)
+      .then(filterCICommits)
+      .then(filterRevertCommits)
+      .then(getChangelogDesc);
+  }
+};
